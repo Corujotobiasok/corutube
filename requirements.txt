@@ -1,0 +1,6 @@
+Flask==3.0.3
+yt-dlp==2024.5.27
+Werkzeug==3.0.3
+demucs==4.0.0
+torch==2.3.0
+torchaudio==2.3.0
