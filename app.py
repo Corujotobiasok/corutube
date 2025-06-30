@@ -103,40 +103,45 @@ def subir_y_separar():
     if archivo.filename == '':
         return "Archivo vacío", 400
 
-    if archivo and allowed_file(archivo.filename):
-        filename = secure_filename(archivo.filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        archivo.save(filepath)
+    stems_seleccionados = request.form.getlist('stems')
+    if not stems_seleccionados:
+        return "Debes seleccionar al menos una opción de extracción", 400
 
-        # Asegurar que ACAPELLAS_FOLDER exista solo si se necesita
-        os.makedirs(ACAPELLAS_FOLDER, exist_ok=True)
+    filename = secure_filename(archivo.filename)
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    archivo.save(filepath)
 
-        try:
-            # Ejecutar Demucs con --two-stems vocals
-            comando = [
-                'demucs',
-                '--two-stems', 'vocals',
-                '--out', ACAPELLAS_FOLDER,
-                filepath
-            ]
-            subprocess.run(comando, check=True)
+    os.makedirs(ACAPELLAS_FOLDER, exist_ok=True)
 
-            # Ruta esperada de salida
-            nombre_base = os.path.splitext(filename)[0]
-            output_dir = os.path.join(ACAPELLAS_FOLDER, 'htdemucs', nombre_base)
+    try:
+        # Construir comando según la selección
+        if 'all' in stems_seleccionados:
+            comando = ['demucs', '--out', ACAPELLAS_FOLDER, filepath]
+        elif stems_seleccionados == ['vocals']:
+            comando = ['demucs', '--two-stems', 'vocals', '--out', ACAPELLAS_FOLDER, filepath]
+        else:
+            comando = ['demucs', '--out', ACAPELLAS_FOLDER, filepath]
 
-            vocals_path = os.path.join(output_dir, 'vocals.wav')
-            instrumental_path = os.path.join(output_dir, 'no_vocals.wav')
+        subprocess.run(comando, check=True)
 
-            if not os.path.exists(vocals_path):
-                return "No se generó el archivo vocals.wav", 500
-            return redirect(url_for('index'))
+        # Verificar la carpeta de salida
+        nombre_base = os.path.splitext(filename)[0]
+        output_dir = os.path.join(ACAPELLAS_FOLDER, 'htdemucs', nombre_base)
 
+        if not os.path.exists(output_dir):
+            return "No se generaron archivos", 500
 
-        except Exception as e:
-            return f"Error al procesar con Demucs: {e}", 500
+        # Si se seleccionó 'other', renombrar other.wav a melodia.wav
+        if 'other' in stems_seleccionados:
+            other_path = os.path.join(output_dir, 'other.wav')
+            melodia_path = os.path.join(output_dir, 'melodia.wav')
+            if os.path.exists(other_path):
+                os.rename(other_path, melodia_path)
 
-    return "Archivo inválido. Solo se permiten archivos .mp3", 400
+        return redirect(url_for('index'))
+
+    except Exception as e:
+        return f"Error al procesar con Demucs: {e}", 500
 
 @app.route('/download/<path:filepath>')
 def download_file(filepath):

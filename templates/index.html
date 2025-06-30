@@ -260,12 +260,48 @@
                 class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 required>
             </div>
+
+            <div>
+  <p class="text-sm font-medium text-gray-300 mb-2">¿Qué querés extraer?</p>
+  <div class="text-white space-y-2">
+    <div class="form-check">
+      <input class="form-check-input bg-secondary border-0" type="checkbox" name="stems" value="vocals" id="vocals">
+      <label class="form-check-label text-light" for="vocals">
+        🎤 Voces
+      </label>
+    </div>
+
+    <div class="form-check">
+      <input class="form-check-input bg-secondary border-0" type="checkbox" name="stems" value="other" id="melodia">
+      <label class="form-check-label text-light" for="melodia">
+        🎹 Melodía
+      </label>
+    </div>
+
+    <div class="form-check">
+      <input class="form-check-input bg-secondary border-0" type="checkbox" name="stems" value="drums" id="drums">
+      <label class="form-check-label text-light" for="drums">
+        🥁 Drums
+      </label>
+    </div>
+
+    <div class="form-check">
+      <input class="form-check-input bg-secondary border-0" type="checkbox" name="stems" value="bass" id="bass">
+      <label class="form-check-label text-light" for="bass">
+        🎸 Bajos
+      </label>
+    </div>
+  </div>
+</div>
+
             <button type="submit" style="margin-top: 16px;"
               class="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg shadow-md transition">
               Subir y Separar <span class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
             </button>
           </form>
         </section>
+
+
 
 
     </main>
