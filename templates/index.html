@@ -213,7 +213,7 @@
 
 
           <!-- Convertidor de Canciones -->
-        <section id="convertidor" class="tab-content p-6 ">
+        <section id="convertidor" class="tab-content p-6">
           <h1 class="text-white text-2xl font-bold mb-4">Convertidor de YouTube Music</h1>
           <p class="text-gray-400 mb-4">Pega la URL de una canción individual de YouTube:</p>
           <form method="POST" action="/single_download" class="space-y-4">
@@ -223,15 +223,17 @@
                 class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required>
             </div>
-            <button style="margin-top: 20px;" type="submit"
+            <button type="submit" style="margin-top: 16px;"
               class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md transition">
-              Descargar Canción
+              Descargar Canción  <span class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
             </button>
+            
           </form>
         </section>
 
+
         <!-- Descargador de Playlists -->
-        <section id="descargas" class="tab-content p-6 mt-6 ">
+        <section id="descargas" class="tab-content p-6 mt-6">
           <h1 class="text-white text-2xl font-bold mb-4">Descargador de Playlists</h1>
           <p class="text-gray-400 mb-4">Pega la URL de una playlist de YouTube Music:</p>
           <form method="POST" action="/playlist_download" class="space-y-4">
@@ -241,15 +243,15 @@
                 class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
                 required>
             </div>
-            <button style="margin-top: 20px;" type="submit"
+            <button type="submit" style="margin-top: 16px;"
               class="w-full py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow-md transition">
-              Descargar Playlist
+              Descargar Playlist <span class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
             </button>
           </form>
         </section>
 
         <!-- Separador de Acapellas -->
-        <section id="acapellas" class="tab-content p-6 mt-6 ">
+        <section id="acapellas" class="tab-content p-6 mt-6">
           <h1 class="text-white text-2xl font-bold mb-4">Separador de Acapellas</h1>
           <form method="POST" action="/subir_y_separar" enctype="multipart/form-data" class="space-y-4">
             <div>
@@ -258,9 +260,9 @@
                 class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 required>
             </div>
-            <button style="margin-top: 20px;" type="submit"
+            <button type="submit" style="margin-top: 16px;"
               class="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg shadow-md transition">
-              Subir y Separar
+              Subir y Separar <span class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
             </button>
           </form>
         </section>
@@ -283,6 +285,19 @@
       });
     });
   </script>
+  <script>
+  document.querySelectorAll("form").forEach(form => {
+    form.addEventListener("submit", function () {
+      const button = form.querySelector("button[type='submit']");
+      const spinner = form.querySelector(".spinner-border");
+
+      if (button && spinner) {
+        button.disabled = true;
+        spinner.classList.remove("d-none");
+      }
+    });
+  });
+</script>
 
 </body>
 </html>
