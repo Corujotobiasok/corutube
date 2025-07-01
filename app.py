@@ -12,25 +12,31 @@ FFMPEG_PATH = os.path.abspath(os.path.join('tools', 'ffmpeg.exe'))
 os.environ['PATH'] = os.path.dirname(FFMPEG_PATH) + os.pathsep + os.environ['PATH']
 # =======================================
 
-# Directorios base
-BASE_DIR = os.path.join('static', 'downloads')
-INDIVIDUAL_FOLDER = os.path.join(BASE_DIR, 'individuales')
-ACAPELLAS_FOLDER = os.path.join(BASE_DIR, 'acapellas')  # Se creará solo cuando se use
-PLAYLIST_FOLDER = os.path.join(BASE_DIR, 'playlists')   # Se creará solo cuando se use
+# Ruta base en Documents/CoruTube
+DOCUMENTS_PATH = os.path.join(os.path.expanduser('~'), 'Documents')
+CORUTUBE_DIR = os.path.join(DOCUMENTS_PATH, 'CoruTube')
+INDIVIDUAL_FOLDER = os.path.join(CORUTUBE_DIR, 'individuales')
+PROCESADAS_FOLDER = os.path.join(CORUTUBE_DIR, 'procesadas')
+PLAYLIST_FOLDER = os.path.join(CORUTUBE_DIR, 'playlists')
+
+# Crear carpetas principales
+os.makedirs(INDIVIDUAL_FOLDER, exist_ok=True)
+os.makedirs(PROCESADAS_FOLDER, exist_ok=True)
+os.makedirs(PLAYLIST_FOLDER, exist_ok=True)
 
 app.config['UPLOAD_FOLDER'] = INDIVIDUAL_FOLDER
 app.config['ALLOWED_EXTENSIONS'] = {'mp3'}
 
-# Crear carpeta de individuales al inicio
-os.makedirs(INDIVIDUAL_FOLDER, exist_ok=True)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
 
 @app.route('/')
 def index():
     archivos = [f for f in os.listdir(INDIVIDUAL_FOLDER) if f.endswith('.mp3')]
     return render_template('index.html', archivos=archivos)
+
 
 @app.route('/single_download', methods=['POST'])
 def single_download():
@@ -57,6 +63,7 @@ def single_download():
 
     except Exception as e:
         return f"Error al descargar: {str(e)}", 500
+
 
 @app.route('/playlist_download', methods=['POST'])
 def playlist_download():
@@ -89,6 +96,7 @@ def playlist_download():
     except Exception as e:
         return f"Error al descargar playlist: {str(e)}", 500
 
+
 @app.route('/subir_y_separar', methods=['POST'])
 def subir_y_separar():
     if 'archivo' not in request.files:
@@ -106,31 +114,20 @@ def subir_y_separar():
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     archivo.save(filepath)
 
-    os.makedirs(ACAPELLAS_FOLDER, exist_ok=True)
-
     try:
-        # Si solo seleccionó "vocals", usamos two-stems
         if stems_seleccionados == ['vocals']:
-            comando = ['demucs', '--two-stems', 'vocals', '--out', ACAPELLAS_FOLDER, filepath]
+            comando = ['demucs', '--two-stems', 'vocals', '--out', PROCESADAS_FOLDER, filepath]
         else:
-            comando = ['demucs', '--out', ACAPELLAS_FOLDER, filepath]
+            comando = ['demucs', '--out', PROCESADAS_FOLDER, filepath]
 
         subprocess.run(comando, check=True)
 
         nombre_base = os.path.splitext(filename)[0]
-        output_dir = os.path.join(ACAPELLAS_FOLDER, 'htdemucs', nombre_base)
+        output_dir = os.path.join(PROCESADAS_FOLDER, 'htdemucs', nombre_base)
+        destino_final = os.path.join(PROCESADAS_FOLDER, nombre_base)
+        os.makedirs(destino_final, exist_ok=True)
 
-        if not os.path.exists(output_dir):
-            return "No se generaron archivos", 500
-
-        # Si se seleccionó "other", renombramos a melodia.wav
-        if 'other' in stems_seleccionados:
-            other_path = os.path.join(output_dir, 'other.wav')
-            melodia_path = os.path.join(output_dir, 'melodia.wav')
-            if os.path.exists(other_path):
-                os.rename(other_path, melodia_path)
-
-        # Eliminar stems no seleccionados
+        # Mover archivos seleccionados
         todos = {
             'vocals': 'vocals.wav',
             'drums': 'drums.wav',
@@ -139,21 +136,28 @@ def subir_y_separar():
         }
 
         for stem, archivo_nombre in todos.items():
-            if stem not in stems_seleccionados:
-                path = os.path.join(output_dir, archivo_nombre)
-                if os.path.exists(path):
-                    os.remove(path)
+            origen = os.path.join(output_dir, archivo_nombre if stem != 'other' else 'other.wav')
+            destino = os.path.join(destino_final, archivo_nombre)
+            if stem in stems_seleccionados and os.path.exists(origen):
+                if stem == 'other':
+                    os.rename(origen, destino)  # Rename to melodia.wav
+                else:
+                    shutil.move(origen, destino)
+
+        shutil.rmtree(os.path.join(PROCESADAS_FOLDER, 'htdemucs'), ignore_errors=True)
 
         return redirect(url_for('index'))
 
     except Exception as e:
         return f"Error al procesar con Demucs: {e}", 500
 
+
 @app.route('/download/<path:filepath>')
 def download_file(filepath):
     dirpath = os.path.dirname(filepath)
     filename = os.path.basename(filepath)
     return send_from_directory(dirpath, filename, as_attachment=True)
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
