@@ -7,6 +7,11 @@ from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
+# ======= RUTA INTERNA A FFMPEG =========
+FFMPEG_PATH = os.path.abspath(os.path.join('tools', 'ffmpeg.exe'))
+os.environ['PATH'] = os.path.dirname(FFMPEG_PATH) + os.pathsep + os.environ['PATH']
+# =======================================
+
 # Directorios base
 BASE_DIR = os.path.join('static', 'downloads')
 INDIVIDUAL_FOLDER = os.path.join(BASE_DIR, 'individuales')
@@ -16,20 +21,8 @@ PLAYLIST_FOLDER = os.path.join(BASE_DIR, 'playlists')   # Se creará solo cuando
 app.config['UPLOAD_FOLDER'] = INDIVIDUAL_FOLDER
 app.config['ALLOWED_EXTENSIONS'] = {'mp3'}
 
-# Crear solo la carpeta de individuales al inicio
+# Crear carpeta de individuales al inicio
 os.makedirs(INDIVIDUAL_FOLDER, exist_ok=True)
-
-# Verificar FFmpeg
-def check_ffmpeg():
-    try:
-        subprocess.run(['ffmpeg', '-version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        return True
-    except FileNotFoundError:
-        return False
-
-if not check_ffmpeg():
-    print("FFmpeg no está instalado o no está en el PATH.")
-    exit(1)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
@@ -55,6 +48,7 @@ def single_download():
                 'preferredcodec': 'mp3',
                 'preferredquality': '192',
             }],
+            'ffmpeg_location': FFMPEG_PATH,
             'quiet': True,
         }) as ydl:
             ydl.extract_info(url, download=True)
@@ -75,7 +69,7 @@ def playlist_download():
             info = ydl.extract_info(url, download=False)
             playlist_title = info.get('title', 'playlist_sin_nombre').replace('/', '_')
             playlist_path = os.path.join(PLAYLIST_FOLDER, playlist_title)
-            os.makedirs(playlist_path, exist_ok=True)  # Se crea solo si hace falta
+            os.makedirs(playlist_path, exist_ok=True)
 
         with yt_dlp.YoutubeDL({
             'format': 'bestaudio/best',
@@ -85,6 +79,7 @@ def playlist_download():
                 'preferredcodec': 'mp3',
                 'preferredquality': '192',
             }],
+            'ffmpeg_location': FFMPEG_PATH,
             'quiet': True,
         }) as ydl:
             ydl.download([url])
@@ -114,29 +109,40 @@ def subir_y_separar():
     os.makedirs(ACAPELLAS_FOLDER, exist_ok=True)
 
     try:
-        # Construir comando según la selección
-        if 'all' in stems_seleccionados:
-            comando = ['demucs', '--out', ACAPELLAS_FOLDER, filepath]
-        elif stems_seleccionados == ['vocals']:
+        # Si solo seleccionó "vocals", usamos two-stems
+        if stems_seleccionados == ['vocals']:
             comando = ['demucs', '--two-stems', 'vocals', '--out', ACAPELLAS_FOLDER, filepath]
         else:
             comando = ['demucs', '--out', ACAPELLAS_FOLDER, filepath]
 
         subprocess.run(comando, check=True)
 
-        # Verificar la carpeta de salida
         nombre_base = os.path.splitext(filename)[0]
         output_dir = os.path.join(ACAPELLAS_FOLDER, 'htdemucs', nombre_base)
 
         if not os.path.exists(output_dir):
             return "No se generaron archivos", 500
 
-        # Si se seleccionó 'other', renombrar other.wav a melodia.wav
+        # Si se seleccionó "other", renombramos a melodia.wav
         if 'other' in stems_seleccionados:
             other_path = os.path.join(output_dir, 'other.wav')
             melodia_path = os.path.join(output_dir, 'melodia.wav')
             if os.path.exists(other_path):
                 os.rename(other_path, melodia_path)
+
+        # Eliminar stems no seleccionados
+        todos = {
+            'vocals': 'vocals.wav',
+            'drums': 'drums.wav',
+            'bass': 'bass.wav',
+            'other': 'melodia.wav' if 'other' in stems_seleccionados else 'other.wav'
+        }
+
+        for stem, archivo_nombre in todos.items():
+            if stem not in stems_seleccionados:
+                path = os.path.join(output_dir, archivo_nombre)
+                if os.path.exists(path):
+                    os.remove(path)
 
         return redirect(url_for('index'))
 
